@@ -46,7 +46,7 @@ def generate_data(
         prob = expit(truefx)  # compute probability
         y = np.random.binomial(1, p=prob)  # generate labels from Binomial distribution
     else:
-        y = truefx + np.random.normal(0, 10, n)
+        y = truefx + np.random.normal(0, 1, n)
     if testing_size > 0:
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=testing_size)
         return x_train, x_test, y_train, y_test
