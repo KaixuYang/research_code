@@ -1,1 +1,1 @@
-This repository includes code that are useful in simulations and training baseline models.
+This repository includes codes that are useful in simulations and training baseline models.
