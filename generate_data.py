@@ -3,8 +3,6 @@ import random
 from scipy.special import expit
 from sklearn.model_selection import train_test_split
 
-'''genereate data'''
-
 
 def generate_data(
     seed,
@@ -25,7 +23,7 @@ def generate_data(
     :param cor: feature correlation
     :param dist: distribution of design matrix, 'unif' for uniform(0,1), anything else for N(0,1)
     :param response: distribution of response, 'bernoulli' for binary classification, anything else for normal
-    :return: x_train, x_test, y_train, y_test
+    :return: x_train(, x_test), y_train(, y_test)
     """
     random.seed(seed)
     # initialize design matrix
