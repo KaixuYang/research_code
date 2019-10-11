@@ -1,0 +1,113 @@
+from metrics import binary_acc
+import numpy as np
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.model_selection import KFold
+from sklearn.svm import SVC
+
+
+class classification:
+    """
+    implements linear regression with/without penalization, for prediction or cv
+    """
+    def __init__(self, x: np.array, y: np.array):
+        self.x = x
+        self.y = y
+        self.LogisticModel = None
+        self.svmModel = None
+
+    def logistic_fit(self, penalty: str = 'l2', c: float = 1.0):
+        """
+        Fits the logistic regression model.
+        :param penalty: default 'l2', can use 'l1'.
+        :param c: inverse tuning parameter
+        :return: None
+        """
+        self.LogisticModel = LogisticRegression(solver='liblinear', penalty=penalty, C=c).fit(self.x, self.y)
+
+    def logisticcv_fit(self, nsplits: int, penalty: str = 'l2'):
+        """
+        runs a cross validation on multiple penalty parameters and returns the best score
+        :param nsplits: number of cv splits
+        :param penalty: default 'l2', can use 'l1'.
+        :return: the best c parameter
+        """
+        c_cand = [1e-4, 1e-3, 1e-2, 5e-2, 1e-1, 2e-1, 3e-1, 4e-1, 5e-1, 8e-1, 1, 2, 5, 10, 20, 50, 100]
+        self.LogisticModel = LogisticRegressionCV(
+            solver='liblinear', Cs=c_cand, cv=nsplits, penalty=penalty).fit(self.x, self.y)
+
+    def logistic_predict(self, x: np.array) -> np.array:
+        """
+        predicts using the fitted logistic regression model
+        :param x: the design matrix to be predicted
+        :return: the predicted y
+        """
+        if self.LogisticModel is None:
+            print('Logistic Model not trained, please run logistic_fit first!')
+            return None
+        else:
+            return self.LogisticModel.predict(x)
+
+    def logistic_cv(self, nsplits: int, penalty: str = 'l2'):
+        """
+        runs a cross validation on the data set and returns the cross validation performance
+        :param nsplits: number of cv splits
+        :param penalty: default 'l2', can use 'l1'.
+        :param c: inverse tuning parameter
+        :return: the cross-validated mse
+        """
+        model = LogisticRegressionCV(solver='liblinear', Cs=50, cv=nsplits, penalty=penalty).fit(self.x, self.y)
+        c = model.C_[0]
+        cv = KFold(n_splits=nsplits)
+        acc_result = []
+        for train, test in cv.split(self.x):
+            x_train = self.x[train, :]
+            x_test = self.x[test, :]
+            y_train = self.y[train]
+            y_test = self.y[test]
+            model = LogisticRegression(solver='liblinear', penalty=penalty, C=c).fit(x_train, y_train)
+            y_predict = model.predict(x_test)
+            acc_result.append(binary_acc(y_test, y_predict))
+        return np.mean(acc_result), c
+
+    def svm_fit(self, c: float = 1.0):
+        """
+        implements the svm classifier
+        :param c: tuning parameter
+        :return: None
+        """
+        self.svmModel = SVC(C=c, gamma='auto').fit(self.x, self.y)
+
+    def svm_predict(self, x):
+        """
+        predict the class of a feature matrix x
+        :param x: the feature matrix
+        :return: the predicted classes
+        """
+        if self.svmModel is None:
+            print("svm not trained, please run svm_fit first!")
+            return None
+        else:
+            return self.svmModel.predict(x)
+
+    def svm_cv(self, nsplits: int):
+        """
+        runs a cross validation on the data set and returns the cross validation performance
+        :param nsplits: number of cv splits
+        :return: the cross-validated binary accuracy
+        """
+        c_cand = [0.1, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50, 100]
+        cv = KFold(n_splits=nsplits)
+        acc_result = []
+        for c in c_cand:
+            acc_result_c = []
+            for train, test in cv.split(self.x):
+                x_train = self.x[train, :]
+                x_test = self.x[test, :]
+                y_train = self.y[train]
+                y_test = self.y[test]
+                model = SVC(C=c, gamma='auto').fit(x_train, y_train)
+                y_predict = model.predict(x_test)
+                acc_result_c.append(binary_acc(y_test, y_predict))
+            acc_result.append(np.mean(acc_result_c))
+        best_c = c_cand[acc_result.index(max(acc_result))]
+        return max(acc_result), best_c
