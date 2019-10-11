@@ -4,7 +4,7 @@ from sklearn.linear_model import LinearRegression, Lasso, LassoCV, Ridge, RidgeC
 from sklearn.model_selection import KFold
 
 
-class LinearModel:
+class Regression:
     """
     implements linear regression with/without penalization, for prediction or cv
     """
