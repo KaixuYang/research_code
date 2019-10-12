@@ -2,8 +2,9 @@ from metrics import binary_acc
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
-from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.model_selection import KFold, GridSearchCV, train_test_split
 from sklearn.svm import SVC
+import xgboost as xgb
 
 
 class classification:
@@ -16,6 +17,7 @@ class classification:
         self.LogisticModel = None
         self.svmModel = None
         self.rfModel = None
+        self.xgboostModel = None
 
     def logistic_fit(self, penalty: str = 'l2', c: float = 1.0):
         """
@@ -158,6 +160,90 @@ class classification:
             y_train = self.y[train]
             y_test = self.y[test]
             model = RandomForestClassifier(**best_params).fit(x_train, y_train)
+            y_predict = model.predict(x_test)
+            acc_result.append(binary_acc(y_test, y_predict))
+        return np.mean(acc_result), best_params
+
+    def xgboost_fit(self, eta: float = 0.1, max_depth: int = 6, subsample: float = 1.0, colsample_bytree: float = 1.0,
+                    lam: float = 1.0, alpha: float = 0.0, objective: str = 'binary:logistic',
+                    eval_metric: str = 'error', num_round: int = 100, early_stop: bool = True):
+        """
+        fits the xgboost model
+        :param eta: learning rate, between 0 and 1
+        :param max_depth: max tree depth
+        :param subsample: proportion of sample drawn
+        :param colsample_bytree: proportion of features drawn
+        :param lam: l2 tuning parameter
+        :param alpha: l1 tuning parameter
+        :param objective: objective of model, 'binary:logistic', etc.
+        :param eval_metric: evaluation metric, 'auc', 'error', etc.
+        :param num_round: number of boosting rounds
+        :param early_stop: whether early stop or not
+        :return: None
+        """
+        params = {'eta': eta, 'max_depth': max_depth, 'subsample': subsample, 'colsample_bytree': colsample_bytree,
+                  'reg_lambda': lam, 'alpha': alpha, 'objective': objective, 'n_estimators': num_round}
+        if early_stop:
+            x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, test_size=0.2)
+            evallist = [(x_test, y_test)]
+            self.xgboostModel = xgb.XGBClassifier(**params)
+            self.xgboostModel.fit(x_train, y_train, eval_metric=eval_metric, eval_set=evallist,
+                                  early_stopping_rounds=10)
+        else:
+            self.xgboostModel = xgb.XGBClassifier(**params)
+            self.xgboostModel.fit(self.x, self.y)
+
+    def xgboost_predict(self, x):
+        """
+        predicts the classes of x
+        :param x: the feature matrix
+        :return: the predicted classes of x
+        """
+        if self.xgboostModel is None:
+            print("xgboost not trained, please run xgboost_fit first!")
+            return None
+        else:
+            return self.xgboostModel.predict(x)
+
+    def xgboost_cv(self, nsplits: int = 5):
+        """
+        cross validation on xgboost model
+        :param nsplits: number of cv splits
+        :return: the cv result
+        """
+        x_train, x_test, y_train, y_test = train_test_split(self.x, self.y, test_size=0.2)
+        params = {
+                "max_depth": [2, 3, 5, 8],
+                "eta": [0.01, 0.05, 0.1, 0.15, 0.2],
+                "objective": ['binary:logistic'],
+                "sumsample": [0.5, 0.7, 1],
+                "colsample_bytree": [0.5, 0.7, 1],
+                "n_estimators": [50, 100, 200, 500],
+            }
+        """
+        fit_params = {
+            "early_stopping_rounds": 20,
+            "eval_metric": "error",
+            "eval_set": [(x_test, y_test)]
+        }
+        """
+        model = xgb.XGBClassifier()
+        gridcv = GridSearchCV(model, params, cv=nsplits)
+        gridcv.fit(x_train, y_train) # , **fit_params)
+        best_params = gridcv.best_params_
+        cv = KFold(n_splits=nsplits)
+        acc_result = []
+        for train, test in cv.split(self.x):
+            x_train = self.x[train, :]
+            x_test = self.x[test, :]
+            y_train = self.y[train]
+            y_test = self.y[test]
+            model = xgb.XGBClassifier(**best_params).fit(x_train, y_train)
+            """
+            x_t, x_v, y_t, y_v = train_test_split(x_train, y_train, test_size=0.2)
+            model = xgb.XGBClassifier(**best_params).fit(x_t, y_t, eval_metric="error", eval_set=[(x_v, y_v)],
+                                                        early_stopping_rounds=20)
+                                                        """
             y_predict = model.predict(x_test)
             acc_result.append(binary_acc(y_test, y_predict))
         return np.mean(acc_result), best_params
