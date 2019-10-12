@@ -1,7 +1,8 @@
 from metrics import binary_acc
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, GridSearchCV
 from sklearn.svm import SVC
 
 
@@ -14,6 +15,7 @@ class classification:
         self.y = y
         self.LogisticModel = None
         self.svmModel = None
+        self.rfModel = None
 
     def logistic_fit(self, penalty: str = 'l2', c: float = 1.0):
         """
@@ -47,12 +49,11 @@ class classification:
         else:
             return self.LogisticModel.predict(x)
 
-    def logistic_cv(self, nsplits: int, penalty: str = 'l2'):
+    def logistic_cv(self, nsplits: int = 5, penalty: str = 'l2'):
         """
         runs a cross validation on the data set and returns the cross validation performance
         :param nsplits: number of cv splits
         :param penalty: default 'l2', can use 'l1'.
-        :param c: inverse tuning parameter
         :return: the cross-validated mse
         """
         model = LogisticRegressionCV(solver='liblinear', Cs=50, cv=nsplits, penalty=penalty).fit(self.x, self.y)
@@ -89,7 +90,7 @@ class classification:
         else:
             return self.svmModel.predict(x)
 
-    def svm_cv(self, nsplits: int):
+    def svm_cv(self, nsplits: int = 5):
         """
         runs a cross validation on the data set and returns the cross validation performance
         :param nsplits: number of cv splits
@@ -111,3 +112,52 @@ class classification:
             acc_result.append(np.mean(acc_result_c))
         best_c = c_cand[acc_result.index(max(acc_result))]
         return max(acc_result), best_c
+
+    def randomforest_fit(self, n_estimators: int = 100, max_depth: int = None, min_samples_split: int = 2):
+        """
+        fits the random forest classifier
+        :param n_estimators: number of trees
+        :param max_depth: max tree depth
+        :param min_samples_split: minimum sample size to split
+        :return: None
+        """
+        self.rfModel = RandomForestClassifier(
+            n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split).fit(self.x, self.y)
+
+    def randomforest_predict(self, x):
+        """
+        predicts the classes of x
+        :param x: the feature  matrix
+        :return: the predicted classes of x
+        """
+        if self.rfModel is None:
+            print("random forest not trained, please run randomforest_fit first!")
+            return None
+        else:
+            return self.rfModel.predict(x)
+
+    def randomforest_cv(self, nsplits: int = 5):
+        """
+        implements a cross validation on the data set and returns the best result
+        :param nsplits: number of cross validation splits
+        :return: the cv binary accuracy
+        """
+        params = {
+            "n_estimators": [20, 50, 100, 200],
+            "max_depth": [2, 3, 5, 8, 10, 15, 20],
+        }
+        model = RandomForestClassifier()
+        gridcv = GridSearchCV(model, params, cv=nsplits)
+        gridcv.fit(self.x, self.y)
+        best_params = gridcv.best_params_
+        cv = KFold(n_splits=nsplits)
+        acc_result = []
+        for train, test in cv.split(self.x):
+            x_train = self.x[train, :]
+            x_test = self.x[test, :]
+            y_train = self.y[train]
+            y_test = self.y[test]
+            model = RandomForestClassifier(**best_params).fit(x_train, y_train)
+            y_predict = model.predict(x_test)
+            acc_result.append(binary_acc(y_test, y_predict))
+        return np.mean(acc_result), best_params
