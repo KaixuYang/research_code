@@ -4,6 +4,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.model_selection import KFold, GridSearchCV, train_test_split
 from sklearn.svm import SVC
+import tensorflow as tf
+from tensorflow.keras import layers
 import xgboost as xgb
 
 
@@ -15,6 +17,7 @@ class classification:
         self.x = x
         self.y = y
         self.LogisticModel = None
+        self.snnModel = None
         self.svmModel = None
         self.rfModel = None
         self.xgboostModel = None
@@ -51,7 +54,7 @@ class classification:
         else:
             return self.LogisticModel.predict(x)
 
-    def logistic_cv(self, nsplits: int = 5, penalty: str = 'l2'):
+    def logistic_cv(self, nsplits: int = 5, penalty: str = 'l2') -> (float, float):
         """
         runs a cross validation on the data set and returns the cross validation performance
         :param nsplits: number of cv splits
@@ -80,7 +83,7 @@ class classification:
         """
         self.svmModel = SVC(C=c, gamma='auto').fit(self.x, self.y)
 
-    def svm_predict(self, x):
+    def svm_predict(self, x) -> np.array:
         """
         predict the class of a feature matrix x
         :param x: the feature matrix
@@ -92,7 +95,7 @@ class classification:
         else:
             return self.svmModel.predict(x)
 
-    def svm_cv(self, nsplits: int = 5):
+    def svm_cv(self, nsplits: int = 5) -> (float, float):
         """
         runs a cross validation on the data set and returns the cross validation performance
         :param nsplits: number of cv splits
@@ -126,7 +129,7 @@ class classification:
         self.rfModel = RandomForestClassifier(
             n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split).fit(self.x, self.y)
 
-    def randomforest_predict(self, x):
+    def randomforest_predict(self, x) -> np.array:
         """
         predicts the classes of x
         :param x: the feature  matrix
@@ -138,7 +141,7 @@ class classification:
         else:
             return self.rfModel.predict(x)
 
-    def randomforest_cv(self, nsplits: int = 5):
+    def randomforest_cv(self, nsplits: int = 5) -> (float, float):
         """
         implements a cross validation on the data set and returns the best result
         :param nsplits: number of cross validation splits
@@ -193,7 +196,7 @@ class classification:
             self.xgboostModel = xgb.XGBClassifier(**params)
             self.xgboostModel.fit(self.x, self.y)
 
-    def xgboost_predict(self, x):
+    def xgboost_predict(self, x) -> np.array:
         """
         predicts the classes of x
         :param x: the feature matrix
@@ -205,7 +208,7 @@ class classification:
         else:
             return self.xgboostModel.predict(x)
 
-    def xgboost_cv(self, nsplits: int = 5):
+    def xgboost_cv(self, nsplits: int = 5) -> (float, float):
         """
         cross validation on xgboost model
         :param nsplits: number of cv splits
@@ -247,3 +250,30 @@ class classification:
             y_predict = model.predict(x_test)
             acc_result.append(binary_acc(y_test, y_predict))
         return np.mean(acc_result), best_params
+
+    def shallownn_fit(self, hidden_size: int = 20, epochs: int = 20, batch_size: int = 20, validation: tuple = None):
+        """
+        fits a shallow neural network model
+        :param hidden_size: number of nodes in the hidden layer
+        :param epochs: number of epochs
+        :param batch_size: number of obs in each batch
+        :return: None
+        """
+        self.snnModel = tf.keras.Sequential()
+        self.snnModel.add(layers.Dense(hidden_size, activation='relu', input_shape=(self.x.shape[1], )))
+        self.snnModel.add(layers.Dense(2, activation='softmax'))
+        self.snnModel.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        if validation is not None:
+            self.snnModel.fit(self.x, tf.keras.utils.to_categorical(self.y), epochs=epochs, batch_size=batch_size)
+
+    def shallownn_predict(self, x: np.array) -> np.array:
+        """
+        makes prediction for x
+        :param x: the feature matrix
+        :return: the predicted classes of x
+        """
+        if self.snnModel is None:
+            print("neural network not trained, please run shallownn_fit first!")
+            return None
+        else:
+            return np.argmax(self.snnModel.predict(x), axis=1)
