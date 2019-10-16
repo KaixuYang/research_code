@@ -54,7 +54,7 @@ class classification:
         else:
             return self.LogisticModel.predict(x)
 
-    def logistic_cv(self, nsplits: int = 5, penalty: str = 'l2') -> (float, float):
+    def logistic_cv(self, nsplits: int = 5, penalty: str = 'l2') -> (float, float, float):
         """
         runs a cross validation on the data set and returns the cross validation performance
         :param nsplits: number of cv splits
@@ -95,7 +95,7 @@ class classification:
         else:
             return self.svmModel.predict(x)
 
-    def svm_cv(self, nsplits: int = 5) -> (float, float):
+    def svm_cv(self, nsplits: int = 5) -> (float, float, float):
         """
         runs a cross validation on the data set and returns the cross validation performance
         :param nsplits: number of cv splits
@@ -141,7 +141,7 @@ class classification:
         else:
             return self.rfModel.predict(x)
 
-    def randomforest_cv(self, nsplits: int = 5) -> (float, float):
+    def randomforest_cv(self, nsplits: int = 5) -> (float, float, float):
         """
         implements a cross validation on the data set and returns the best result
         :param nsplits: number of cross validation splits
@@ -208,7 +208,7 @@ class classification:
         else:
             return self.xgboostModel.predict(x)
 
-    def xgboost_cv(self, nsplits: int = 5) -> (float, float):
+    def xgboost_cv(self, nsplits: int = 5) -> (float, float, float):
         """
         cross validation on xgboost model
         :param nsplits: number of cv splits
