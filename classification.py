@@ -73,7 +73,7 @@ class classification:
             model = LogisticRegression(solver='liblinear', penalty=penalty, C=c).fit(x_train, y_train)
             y_predict = model.predict(x_test)
             acc_result.append(binary_acc(y_test, y_predict))
-        return np.mean(acc_result), c
+        return np.mean(acc_result), np.std(acc_result), c
 
     def svm_fit(self, c: float = 1.0):
         """
@@ -116,7 +116,7 @@ class classification:
                 acc_result_c.append(binary_acc(y_test, y_predict))
             acc_result.append(np.mean(acc_result_c))
         best_c = c_cand[acc_result.index(max(acc_result))]
-        return max(acc_result), best_c
+        return max(acc_result), np.std(acc_result), best_c
 
     def randomforest_fit(self, n_estimators: int = 100, max_depth: int = None, min_samples_split: int = 2):
         """
@@ -165,7 +165,7 @@ class classification:
             model = RandomForestClassifier(**best_params).fit(x_train, y_train)
             y_predict = model.predict(x_test)
             acc_result.append(binary_acc(y_test, y_predict))
-        return np.mean(acc_result), best_params
+        return np.mean(acc_result), np.std(acc_result), best_params
 
     def xgboost_fit(self, eta: float = 0.1, max_depth: int = 6, subsample: float = 1.0, colsample_bytree: float = 1.0,
                     lam: float = 1.0, alpha: float = 0.0, objective: str = 'binary:logistic',
@@ -249,7 +249,7 @@ class classification:
                                                         """
             y_predict = model.predict(x_test)
             acc_result.append(binary_acc(y_test, y_predict))
-        return np.mean(acc_result), best_params
+        return np.mean(acc_result), np.std(acc_result), best_params
 
     def shallownn_fit(self, hidden_size: int = 20, epochs: int = 20, batch_size: int = 20, validation: tuple = None):
         """
